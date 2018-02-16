@@ -1,0 +1,255 @@
+001/*
+002 * Licensed to the Apache Software Foundation (ASF) under one or more
+003 * contributor license agreements.  See the NOTICE file distributed with
+004 * this work for additional information regarding copyright ownership.
+005 * The ASF licenses this file to You under the Apache License, Version 2.0
+006 * (the "License"); you may not use this file except in compliance with
+007 * the License.  You may obtain a copy of the License at
+008 *
+009 *     http://www.apache.org/licenses/LICENSE-2.0
+010 *
+011 * Unless required by applicable law or agreed to in writing, software
+012 * distributed under the License is distributed on an "AS IS" BASIS,
+013 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+014 * See the License for the specific language governing permissions and
+015 * limitations under the License.
+016 */
+017package org.apache.lucene.demo;
+018
+019
+020import java.io.BufferedReader;
+021import java.io.IOException;
+022import java.io.InputStreamReader;
+023import java.nio.charset.StandardCharsets;
+024import java.nio.file.Files;
+025import java.nio.file.Paths;
+026import java.util.Date;
+027
+028import org.apache.lucene.analysis.Analyzer;
+029import org.apache.lucene.analysis.standard.StandardAnalyzer;
+030import org.apache.lucene.document.Document;
+031import org.apache.lucene.index.DirectoryReader;
+032import org.apache.lucene.index.IndexReader;
+033import org.apache.lucene.queryparser.classic.QueryParser;
+034import org.apache.lucene.search.IndexSearcher;
+035import org.apache.lucene.search.Query;
+036import org.apache.lucene.search.ScoreDoc;
+037import org.apache.lucene.search.TopDocs;
+038import org.apache.lucene.store.FSDirectory;
+039
+040/** Simple command-line based search demo. */
+041public class SearchFiles {
+042
+043  private SearchFiles() {}
+044
+045  /** Simple command-line based search demo. */
+046  public static void main(String[] args) throws Exception {
+047    String usage =
+048      "Usage:\tjava org.apache.lucene.demo.SearchFiles [-index dir] [-field f
+] [-repeat n] [-queries file] [-query string] [-raw] [-paging hitsPerPage]\n\nSe
+e http://lucene.apache.org/core/4_1_0/demo/ for details.";
+049    if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0])))
+ {
+050      System.out.println(usage);
+051      System.exit(0);
+052    }
+053
+054    String index = "index";
+055    String field = "contents";
+056    String queries = null;
+057    int repeat = 0;
+058    boolean raw = false;
+059    String queryString = null;
+060    int hitsPerPage = 10;
+061
+062    for(int i = 0;i < args.length;i++) {
+063      if ("-index".equals(args[i])) {
+064        index = args[i+1];
+065        i++;
+066      } else if ("-field".equals(args[i])) {
+067        field = args[i+1];
+068        i++;
+069      } else if ("-queries".equals(args[i])) {
+070        queries = args[i+1];
+071        i++;
+072      } else if ("-query".equals(args[i])) {
+073        queryString = args[i+1];
+074        i++;
+075      } else if ("-repeat".equals(args[i])) {
+076        repeat = Integer.parseInt(args[i+1]);
+077        i++;
+078      } else if ("-raw".equals(args[i])) {
+079        raw = true;
+080      } else if ("-paging".equals(args[i])) {
+081        hitsPerPage = Integer.parseInt(args[i+1]);
+082        if (hitsPerPage <= 0) {
+083          System.err.println("There must be at least 1 hit per page.");
+084          System.exit(1);
+085        }
+086        i++;
+087      }
+088    }
+089
+090    IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(inde
+x)));
+091    IndexSearcher searcher = new IndexSearcher(reader);
+092    Analyzer analyzer = new StandardAnalyzer();
+093
+094    BufferedReader in = null;
+095    if (queries != null) {
+096      in = Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8
+);
+097    } else {
+098      in = new BufferedReader(new InputStreamReader(System.in, StandardCharse
+ts.UTF_8));
+099    }
+100    QueryParser parser = new QueryParser(field, analyzer);
+101    while (true) {
+102      if (queries == null && queryString == null) {                        //
+ prompt the user
+103        System.out.println("Enter query: ");
+104      }
+105
+106      String line = queryString != null ? queryString : in.readLine();
+107
+108      if (line == null || line.length() == -1) {
+109        break;
+110      }
+111
+112      line = line.trim();
+113      if (line.length() == 0) {
+114        break;
+115      }
+116
+117      Query query = parser.parse(line);
+118      System.out.println("Searching for: " + query.toString(field));
+119
+120      if (repeat > 0) {                           // repeat & time as benchma
+rk
+121        Date start = new Date();
+122        for (int i = 0; i < repeat; i++) {
+123          searcher.search(query, 100);
+124        }
+125        Date end = new Date();
+126        System.out.println("Time: "+(end.getTime()-start.getTime())+"ms");
+127      }
+128
+129      doPagingSearch(in, searcher, query, hitsPerPage, raw, queries == null &
+& queryString == null);
+130
+131      if (queryString != null) {
+132        break;
+133      }
+134    }
+135    reader.close();
+136  }
+137
+138  /**
+139   * This demonstrates a typical paging search scenario, where the search eng
+ine presents
+140   * pages of size n to the user. The user can then go to the next page if in
+terested in
+141   * the next hits.
+142   *
+143   * When the query is executed for the first time, then only enough results
+are collected
+144   * to fill 5 result pages. If the user wants to page beyond this limit, the
+n the query
+145   * is executed another time and all hits are collected.
+146   *
+147   */
+148  public static void doPagingSearch(BufferedReader in, IndexSearcher searcher
+, Query query,
+149                                     int hitsPerPage, boolean raw, boolean in
+teractive) throws IOException {
+150
+151    // Collect enough docs to show 5 pages
+152    TopDocs results = searcher.search(query, 5 * hitsPerPage);
+153    ScoreDoc[] hits = results.scoreDocs;
+154
+155    int numTotalHits = Math.toIntExact(results.totalHits);
+156    System.out.println(numTotalHits + " total matching documents");
+157
+158    int start = 0;
+159    int end = Math.min(numTotalHits, hitsPerPage);
+160
+161    while (true) {
+162      if (end > hits.length) {
+163        System.out.println("Only results 1 - " + hits.length +" of " + numTot
+alHits + " total matching documents collected.");
+164        System.out.println("Collect more (y/n) ?");
+165        String line = in.readLine();
+166        if (line.length() == 0 || line.charAt(0) == 'n') {
+167          break;
+168        }
+169
+170        hits = searcher.search(query, numTotalHits).scoreDocs;
+171      }
+172
+173      end = Math.min(hits.length, start + hitsPerPage);
+174
+175      for (int i = start; i < end; i++) {
+176        if (raw) {                              // output raw format
+177          System.out.println("doc="+hits[i].doc+" score="+hits[i].score);
+178          continue;
+179        }
+180
+181        Document doc = searcher.doc(hits[i].doc);
+182        String path = doc.get("path");
+183        if (path != null) {
+184          System.out.println((i+1) + ". " + path);
+185          String title = doc.get("title");
+186          if (title != null) {
+187            System.out.println("   Title: " + doc.get("title"));
+188          }
+189        } else {
+190          System.out.println((i+1) + ". " + "No path for this document");
+191        }
+192
+193      }
+194
+195      if (!interactive || end == 0) {
+196        break;
+197      }
+198
+199      if (numTotalHits >= end) {
+200        boolean quit = false;
+201        while (true) {
+202          System.out.print("Press ");
+203          if (start - hitsPerPage >= 0) {
+204            System.out.print("(p)revious page, ");
+205          }
+206          if (start + hitsPerPage < numTotalHits) {
+207            System.out.print("(n)ext page, ");
+208          }
+209          System.out.println("(q)uit or enter number to jump to a page.");
+210
+211          String line = in.readLine();
+212          if (line.length() == 0 || line.charAt(0)=='q') {
+213            quit = true;
+214            break;
+215          }
+216          if (line.charAt(0) == 'p') {
+217            start = Math.max(0, start - hitsPerPage);
+218            break;
+219          } else if (line.charAt(0) == 'n') {
+220            if (start + hitsPerPage < numTotalHits) {
+221              start+=hitsPerPage;
+222            }
+223            break;
+224          } else {
+225            int page = Integer.parseInt(line);
+226            if ((page - 1) * hitsPerPage < numTotalHits) {
+227              start = (page - 1) * hitsPerPage;
+228              break;
+229            } else {
+230              System.out.println("No such page");
+231            }
+232          }
+233        }
+234        if (quit) break;
+235        end = Math.min(numTotalHits, start + hitsPerPage);
+236      }
+237    }
+238  }
+239}
