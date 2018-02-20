@@ -1,2 +1,7 @@
-javac -d ../../bin *.java
-IndexFiles -index ../../index -docs ~/data/sample -update
+src="/afs/ms/u/l/liefe/lucene-7.2.1/lucene-7.2.1/analysis/common/lucene-analyzers-common-7.2.1.jar"
+
+javac -d ../bin -cp $src *.java
+
+#java -cp ~/lucene/* IndexFiles -index ../../index -docs ~/data/sample -update
+
+#java -cp ../../bin:/afs/ms/u/l/liefe/lucene-7.2.1/lucene-7.2.1/analysis/common/lucene-analyzers-common-7.2.1.jar IndexFiles -index ../../index -docs ~/data/sample -update
