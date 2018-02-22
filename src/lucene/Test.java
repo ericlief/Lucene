@@ -1,56 +1,126 @@
 package lucene;
 
-import java.io.BufferedReader;
-import java.io.File;
+import java.io.DataInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Scanner;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.zip.GZIPInputStream;
 
 public class Test {
 
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws IOException {
 
 		// FileInputStream fis = new
 		// FileInputStream("/home/liefe/Lucene/port-text.txt.gz");
 		// GZIPInputStream gzip = new GZIPInputStream(fis);
 		// String file = "/home/liefe/Lucene/port-text.txt.gz";
 		String file = "/home/liefe/data/sample/LN-20020102001.vert.gz";
+		Path path = Paths.get(file);
+		// file = "file.txt";
 
-		// try (InputStreamReader stream = new InputStreamReader(new GZIPInputStream(new
-		// FileInputStream(file)))) {
-
-		// try (BufferedReader stream = new BufferedReader(new FileReader(file))) {
-		// char[] buffer = new char[4096];
-		// int i = stream.read(buffer);
-		// if (i <= 0)
-		// System.out.println("buffer full");
-		// for (i = 0; i < buffer.length; i++)
-		// System.out.print(buffer[i]);
-		// System.out.println();
-
-		// docidMatch = buffer.matches("<DOCID>(.*)</DOCID>",re.DOTALL);
-		try (BufferedReader stream = new BufferedReader(
-				new InputStreamReader(new GZIPInputStream(new FileInputStream(file))))) {
-
+		// read file into stream, try-with-resources
+		// try (Stream<String> stream = Files.lines(Paths.get(file))) {
+		// String line;
+		// StringBuilder text = new StringBuilder();
+		// int no = 0;
+		// while ((line = stream.readLine()) != null) {
+		// // String newline = line.replace("\r", "\\r");
+		//
+		// System.out.printf(line);
+		// text.append(line);
+		// no++;// String line;
+		// StringBuilder text = new StringBuilder();
+		// int no = 0;
+		// while ((line = stream.readLine()) != null) {
+		// // String newline = line.replace("\r", "\\r");
+		//
+		// System.out.printf(line);
+		// text.append(line);
+		// no++;
+		// stream.forEach(System.out::println);
+		// stream.forEach(action);
+		//
+		// } catch (IOException e) {
+		// e.printStackTrace();
+		// }
+		// String file = "file.txt.gz";
+		try (DataInputStream stream = new DataInputStream(new GZIPInputStream(new FileInputStream(file)))) {
 			String line;
-			StringBuilder text = new StringBuilder();
-			while ((line = stream.readLine()) != null) {
-				System.out.print(line);
-				text.append(line);
-
+			while ((line = stream.readUTF()) != "\f") {
+				System.out.println(line);
 			}
-			// System.out.println(text);
-		} catch (IOException e) {
-			System.out.println("Doc does not exist");
-		}
 
-		Scanner sc = new Scanner(new File(file));
-		String s = sc.useDelimiter("\\Z").next();
-		sc.close();
-		System.out.println(s);
+			// try (BufferedReader stream = new BufferedReader(new FileReader(file))) {
+			// char[] buffer = new char[4096];
+			// int i = stream.read(buffer);
+			// if (i <= 0)
+			// System.out.println("buffer full");
+			// for (i = 0; i < buffer.length; i++)
+			// System.out.print(buffer[i]);
+			// System.out.println();
+
+			// // docidMatch = buffer.matches("<DOCID>(.*)</DOCID>",re.DOTALL);
+			// try (BufferedReader stream = new BufferedReader(
+			// new InputStreamReader(new GZIPInputStream(new FileInputStream(file))))) {
+
+			// StringBuilder sb = new StringBuilder();
+			// sb.append("1\n");
+			// sb.append("2\n");
+			// sb.append("3\n");
+			// file = sb.toString();
+			// String[] sarr = file.split("\\r?\\n");
+			////
+			// for (String line : lines)
+			// System.out.println(line);
+			// for (String str : sarr)
+			// System.out.println(str);
+			//
+			// System.out.println(sarr.length);
+
+			// String[] lines = (String[]) Files.lines(path).toArray();
+			//
+			// for (String line : lines)
+			// System.out.println(line);
+			//
+
+			// Files.lines(new File(file).toPath()).map(s -> s.trim()).filter(s ->
+			// s.startsWith("abc"))
+			// .forEach(System.out::println);
+			// .orElseThrow(() -> new IOError("Enclosing method not found"));
+
+			// try (BufferedReader stream = new BufferedReader(new StringReader(file))) {
+			//
+			// String line;
+			// StringBuilder text = new StringBuilder();
+			// int no = 0;
+			// while ((line = stream.readLine()) != null) {
+			// // String newline = line.replace("\r", "\\r");
+			//
+			// System.out.printf(line);
+			// text.append(line);
+			// no++;
+			// }
+			//
+			// System.out.println(no);
+			//
+			// String s = text.toString();
+			// String[] sarr = s.split("\\r?\\n");
+			//
+			// for (String str : sarr)
+			// System.out.println(str);
+			//
+			// System.out.println(sarr.length);
+			// System.out.println("total " + no);
+			// System.out.println("Doc does not exist");
+		}
+		// System.out.printf("test\ntest");
+
+		// Scanner sc = new Scanner(new File(file));
+		// String s = sc.useDelimiter("\\Z").next();
+		// sc.close();
+		// System.out.println(s);
+
 	}
 }
 
