@@ -24,9 +24,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Date;
-
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.cz.CzechAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -52,7 +51,7 @@ public class SearchFiles {
 		}
 
 		String index = "index";
-		String field = "contents";
+		String field = "text";
 		String queries = null;
 		int repeat = 0;
 		boolean raw = false;
@@ -89,7 +88,7 @@ public class SearchFiles {
 
 		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(index)));
 		IndexSearcher searcher = new IndexSearcher(reader);
-		Analyzer analyzer = new StandardAnalyzer();
+		Analyzer analyzer = new CzechAnalyzer();
 
 		BufferedReader in = null;
 		if (queries != null) {
@@ -97,6 +96,8 @@ public class SearchFiles {
 		} else {
 			in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
 		}
+
+		// Parse query
 		QueryParser parser = new QueryParser(field, analyzer);
 		while (true) {
 			if (queries == null && queryString == null) { //
@@ -117,7 +118,7 @@ public class SearchFiles {
 			Query query = parser.parse(line);
 			System.out.println("Searching for: " + query.toString(field));
 
-			if (repeat > 0) { // repeat & time as benchma
+			if (repeat > 0) { // repeat & time as benchmark
 				Date start = new Date();
 				for (int i = 0; i < repeat; i++) {
 					searcher.search(query, 100);
@@ -177,14 +178,18 @@ public class SearchFiles {
 
 			for (int i = start; i < end; i++) {
 				if (raw) { // output raw format
-					System.out.println("doc=" + hits[i].doc + " score=" + hits[i].score);
+					Document doc = searcher.doc(hits[i].doc);
+					String docId = doc.get("docId");
+					System.out.println("doc=" + hits[i].doc + " " + docId + " score=" + hits[i].score);
 					continue;
 				}
 
 				Document doc = searcher.doc(hits[i].doc);
 				String path = doc.get("path");
+				String docId = doc.get("docId");
 				if (path != null) {
 					System.out.println((i + 1) + ". " + path);
+					System.out.println((i + 1) + ". " + docId);
 					String title = doc.get("title");
 					if (title != null) {
 						System.out.println("   Title: " + doc.get("title"));
